@@ -10,7 +10,7 @@ export default function IOUData({ rippleStateList, ledgerTimestamp }) {
     'Tokens (IOUs)'
   )
 
-  const statusNode = !rippleStateList ? 'Loading...' : <span>There are {rippleStateList?.length} tokens</span>
+  // const statusNode = !rippleStateList ? 'Loading...' : <span>There are {rippleStateList?.length} tokens</span>
 
   // console.log(rippleStateList) //delete
 
@@ -115,19 +115,19 @@ export default function IOUData({ rippleStateList, ledgerTimestamp }) {
           </tr>
         </thead>
         <tbody>
-          <tr>
+          {/* <tr>
             <td>Status</td>
             <td>{statusNode}</td>
-          </tr>
+          </tr> */}
           {tokenRows}
         </tbody>
       </table>
       <div className="show-on-small-w800">
         <br />
         <center>{title}</center>
-        <p>
+        {/* <p>
           <span className="grey">Status</span> {statusNode}
-        </p>
+        </p> */}
         {rippleStateList.map((tl, i) => {
           const issuerAddress = tl.HighLimit?.issuer
           const balanceObj = {
