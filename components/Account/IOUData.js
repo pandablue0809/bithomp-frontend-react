@@ -1,4 +1,4 @@
-import { fullDateAndTime } from '../../utils/format'
+import { fullDateAndTime, amountFormatNode, addressUsernameOrServiceLink, niceCurrency } from '../../utils/format'
 
 export default function IOUData({ rippleStateList, ledgerTimestamp }) {
   //show the section only if there are tokens to show
@@ -69,6 +69,36 @@ export default function IOUData({ rippleStateList, ledgerTimestamp }) {
 
   // amount / gateway details / trustline settings
 
+  const tokenRows = rippleStateList.map((tl, i) => {
+    // Figure out which side of the trustline is the counterparty (issuer)
+    // If current account address is HighLimit.issuer then the counterparty is LowLimit.issuer and vice-versa.
+    const issuerAddress = tl.HighLimit?.issuer
+
+    // Prepare balance object compatible with amountFormatNode helper
+    const balanceObj = {
+      value: tl.Balance?.value,
+      currency: tl.Balance?.currency,
+      issuer: tl.Balance?.issuer
+    }
+
+    // Build a simple string that lists the most important flags for quick visibility
+    const activeFlags = []
+    if (tl.flags?.lowFreeze || tl.flags?.highFreeze) activeFlags.push('Freeze')
+    if (tl.flags?.lowNoRipple || tl.flags?.highNoRipple) activeFlags.push('NoRipple')
+    if (tl.flags?.lowAuth || tl.flags?.highAuth) activeFlags.push('Auth')
+    if (tl.flags?.lowReserve || tl.flags?.highReserve) activeFlags.push('Reserve')
+
+    return (
+      <tr key={i}>
+        <td className="center" style={{ width: 30 }}>{i + 1}</td>
+        <td>{niceCurrency(tl.Balance?.currency)}</td>
+        <td className="right">{amountFormatNode(balanceObj)}</td>
+        <td>{addressUsernameOrServiceLink({ issuer: issuerAddress }, 'issuer', { short: true })}</td>
+        <td className="right">{activeFlags.join(', ') || <span className="grey">—</span>}</td>
+      </tr>
+    )
+  })
+
   return (
     <>
       <table className="table-details hide-on-small-w800">
@@ -76,12 +106,20 @@ export default function IOUData({ rippleStateList, ledgerTimestamp }) {
           <tr>
             <th colSpan="100">{title}</th>
           </tr>
+          <tr>
+            <th>#</th>
+            <th>Currency</th>
+            <th className="right">Balance</th>
+            <th>Issuer</th>
+            <th className="right">Flags</th>
+          </tr>
         </thead>
         <tbody>
           <tr>
             <td>Status</td>
             <td>{statusNode}</td>
           </tr>
+          {tokenRows}
         </tbody>
       </table>
       <div className="show-on-small-w800">
@@ -90,6 +128,28 @@ export default function IOUData({ rippleStateList, ledgerTimestamp }) {
         <p>
           <span className="grey">Status</span> {statusNode}
         </p>
+        {rippleStateList.map((tl, i) => {
+          const issuerAddress = tl.HighLimit?.issuer
+          const balanceObj = {
+            value: tl.Balance?.value,
+            currency: tl.Balance?.currency,
+            issuer: tl.Balance?.issuer
+          }
+          const activeFlags = []
+          if (tl.flags?.lowFreeze || tl.flags?.highFreeze) activeFlags.push('Freeze')
+          if (tl.flags?.lowNoRipple || tl.flags?.highNoRipple) activeFlags.push('NoRipple')
+          if (tl.flags?.lowAuth || tl.flags?.highAuth) activeFlags.push('Auth')
+          if (tl.flags?.lowReserve || tl.flags?.highReserve) activeFlags.push('Reserve')
+
+          return (
+            <div key={i} style={{ marginBottom: '6px' }} suppressHydrationWarning>
+              <span className="grey">{i + 1}. </span>
+              {niceCurrency(tl.Balance?.currency)} — {amountFormatNode(balanceObj)}{' '}
+              ({addressUsernameOrServiceLink({ issuer: issuerAddress }, 'issuer', { short: true })})
+              {activeFlags.length > 0 && <span className="grey"> — {activeFlags.join(', ')}</span>}
+            </div>
+          )
+        })}
       </div>
       <style jsx>{``}</style>
     </>

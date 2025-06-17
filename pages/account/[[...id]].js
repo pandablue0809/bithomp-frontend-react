@@ -60,7 +60,7 @@ import XamanData from '../../components/Account/XamanData'
 import ObjectsData from '../../components/Account/ObjectsData'
 import NFTokenData from '../../components/Account/NFTokenData'
 import URITokenData from '../../components/Account/URITokenData'
-//import IOUData from '../../components/Account/IOUData'
+import IOUData from '../../components/Account/IOUData'
 //import EscrowData from '../../components/Account/EscrowData'
 //import DexOrdersData from '../../components/Account/DexOrdersData'
 
@@ -507,20 +507,20 @@ export default function Account({
                             </div>
                           )}
 
-                          {/* hide while its not ready
+                          {/* hide while its not ready */}
                           <IOUData
                             rippleStateList={objects?.rippleStateList}
                             ledgerTimestamp={data?.ledgerInfo?.ledgerTimestamp}
                           />
-                          <EscrowData
+                          {/* <EscrowData
                             ledgerTimestamp={data?.ledgerInfo?.ledgerTimestamp}
                             escrowList={objects?.escrowList}
                           />
                           <DexOrdersData
                             ledgerTimestamp={data?.ledgerInfo?.ledgerTimestamp}
                             offerList={objects?.offerList}
-                          />
-                          */}
+                          /> */}
+                         
 
                           <LedgerData
                             data={data}
