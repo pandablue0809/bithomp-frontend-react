@@ -1,6 +1,6 @@
-import { fullDateAndTime, amountFormatNode, addressUsernameOrServiceLink, niceCurrency } from '../../utils/format'
+import { fullDateAndTime, addressUsernameOrServiceLink, niceCurrency, shortNiceNumber } from '../../utils/format'
 
-export default function IOUData({ rippleStateList, ledgerTimestamp }) {
+export default function IOUData({ rippleStateList, ledgerTimestamp, userData }) {
   //show the section only if there are tokens to show
   if (!rippleStateList?.length) return ''
 
@@ -9,10 +9,6 @@ export default function IOUData({ rippleStateList, ledgerTimestamp }) {
   ) : (
     'Tokens (IOUs)'
   )
-
-  // const statusNode = !rippleStateList ? 'Loading...' : <span>There are {rippleStateList?.length} tokens</span>
-
-  // console.log(rippleStateList) //delete
 
   /*
   [
@@ -68,20 +64,9 @@ export default function IOUData({ rippleStateList, ledgerTimestamp }) {
   */
 
   // amount / gateway details / trustline settings
-
   const tokenRows = rippleStateList.map((tl, i) => {
-    // Figure out which side of the trustline is the counterparty (issuer)
-    // If current account address is HighLimit.issuer then the counterparty is LowLimit.issuer and vice-versa.
-    const issuerAddress = tl.HighLimit?.issuer
-
-    // Prepare balance object compatible with amountFormatNode helper
-    const balanceObj = {
-      value: tl.Balance?.value,
-      currency: tl.Balance?.currency,
-      issuer: tl.Balance?.issuer
-    }
-
-    // Build a simple string that lists the most important flags for quick visibility
+    const issuer = tl.HighLimit?.issuer === userData?.address ? tl.LowLimit : tl.HighLimit
+     // Build a simple string that lists the most important flags for quick visibility
     const activeFlags = []
     if (tl.flags?.lowFreeze || tl.flags?.highFreeze) activeFlags.push('Freeze')
     if (tl.flags?.lowNoRipple || tl.flags?.highNoRipple) activeFlags.push('NoRipple')
@@ -92,8 +77,8 @@ export default function IOUData({ rippleStateList, ledgerTimestamp }) {
       <tr key={i}>
         <td className="center" style={{ width: 30 }}>{i + 1}</td>
         <td>{niceCurrency(tl.Balance?.currency)}</td>
-        <td className="right">{amountFormatNode(balanceObj)}</td>
-        <td>{addressUsernameOrServiceLink({ issuer: issuerAddress }, 'issuer', { short: true })}</td>
+        <td className="right">{shortNiceNumber(Math.abs(tl.Balance?.value))}</td>
+        <td>{addressUsernameOrServiceLink(issuer, 'issuer', { short: true })}</td>
         <td className="right">{activeFlags.join(', ') || <span className="grey">—</span>}</td>
       </tr>
     )
@@ -115,26 +100,14 @@ export default function IOUData({ rippleStateList, ledgerTimestamp }) {
           </tr>
         </thead>
         <tbody>
-          {/* <tr>
-            <td>Status</td>
-            <td>{statusNode}</td>
-          </tr> */}
           {tokenRows}
         </tbody>
       </table>
       <div className="show-on-small-w800">
         <br />
         <center>{title}</center>
-        {/* <p>
-          <span className="grey">Status</span> {statusNode}
-        </p> */}
         {rippleStateList.map((tl, i) => {
-          const issuerAddress = tl.HighLimit?.issuer
-          const balanceObj = {
-            value: tl.Balance?.value,
-            currency: tl.Balance?.currency,
-            issuer: tl.Balance?.issuer
-          }
+          const issuer = tl.HighLimit?.issuer === userData?.address ? tl.LowLimit : tl.HighLimit          
           const activeFlags = []
           if (tl.flags?.lowFreeze || tl.flags?.highFreeze) activeFlags.push('Freeze')
           if (tl.flags?.lowNoRipple || tl.flags?.highNoRipple) activeFlags.push('NoRipple')
@@ -144,8 +117,8 @@ export default function IOUData({ rippleStateList, ledgerTimestamp }) {
           return (
             <div key={i} style={{ marginBottom: '6px' }} suppressHydrationWarning>
               <span className="grey">{i + 1}. </span>
-              {niceCurrency(tl.Balance?.currency)} — {amountFormatNode(balanceObj)}{' '}
-              ({addressUsernameOrServiceLink({ issuer: issuerAddress }, 'issuer', { short: true })})
+              {niceCurrency(tl.Balance?.currency)} — {shortNiceNumber(Math.abs(tl.Balance?.value))}{' '}
+              ({addressUsernameOrServiceLink(issuer, 'issuer', { short: true })})
               {activeFlags.length > 0 && <span className="grey"> — {activeFlags.join(', ')}</span>}
             </div>
           )

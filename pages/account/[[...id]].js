@@ -511,6 +511,7 @@ export default function Account({
                           <IOUData
                             rippleStateList={objects?.rippleStateList}
                             ledgerTimestamp={data?.ledgerInfo?.ledgerTimestamp}
+                            userData={userData}
                           />
                           <EscrowData
                             ledgerTimestamp={data?.ledgerInfo?.ledgerTimestamp}
