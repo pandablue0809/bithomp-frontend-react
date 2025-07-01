@@ -10,7 +10,7 @@ import FiltersFrame from '../components/Layout/FiltersFrame'
 import InfiniteScrolling from '../components/Layout/InfiniteScrolling'
 import IssuerSearchSelect from '../components/UI/IssuerSearchSelect'
 import CurrencySearchSelect from '../components/UI/CurrencySearchSelect'
-import { AddressWithIcon, niceCurrency, shortNiceNumber, userOrServiceName } from '../utils/format'
+import { AddressWithIcon, niceCurrency, niceNumber, shortNiceNumber, userOrServiceName } from '../utils/format'
 import { axiosServer, passHeaders } from '../utils/axios'
 import { getIsSsrMobile } from '../utils/mobile'
 import { nativeCurrency, useWidth } from '../utils'
@@ -87,7 +87,9 @@ export default function Tokens({
   initialErrorMessage,
   subscriptionExpired,
   sessionToken,
-  setSignRequest
+  setSignRequest,
+  selectedCurrency,
+  fiatRate
 }) {
   const { t } = useTranslation()
   const width = useWidth()
@@ -191,6 +193,10 @@ export default function Tokens({
   const csvHeaders = [
     { label: 'Currency', key: 'currency' },
     { label: 'Issuer', key: 'issuer' },
+    { label: `Price (${fiatRate > 0 ? selectedCurrency.toUpperCase() : nativeCurrency})`, key: 'price' },
+    { label: 'Volume', key: 'volume' },
+    { label: 'Traders', key: 'traders' },
+    { label: `Marketcap (${fiatRate > 0 ? selectedCurrency.toUpperCase() : nativeCurrency})`, key: 'marketcap' },
     { label: 'Trustlines', key: 'trustlines' },
     { label: 'Holders', key: 'holders' }
   ]
@@ -234,6 +240,58 @@ export default function Tokens({
     })
   }
 
+  // Helper function to format price in fiat currency
+  const formatPrice = (priceXrp, full = false) => {
+    if (!priceXrp) return '-'
+    const price = parseFloat(priceXrp)
+    if (isNaN(price)) return '-'
+    
+    // Convert to fiat if fiatRate is available
+    if (fiatRate && fiatRate > 0) {
+      const fiatPrice = price * fiatRate
+      return full ? niceNumber(fiatPrice, 15, selectedCurrency) : shortNiceNumber(fiatPrice, 2, 3, selectedCurrency)
+    }
+    
+    return full ? niceNumber(price, 15, selectedCurrency) : shortNiceNumber(price, 2, 3, selectedCurrency)
+  }
+
+  // Helper function to format volume
+  const formatVolume = (buyVolume, sellVolume, full = false) => {
+    if (!buyVolume || !sellVolume) return '-'
+    const buy = parseFloat(buyVolume)
+    const sell = parseFloat(sellVolume)
+    if (isNaN(buy) || isNaN(sell)) return '-'
+    const totalVolume = buy + sell
+    
+    if (fiatRate && fiatRate > 0) {
+      const fiatVolume = totalVolume * fiatRate
+      return full ? niceNumber(fiatVolume, 15, selectedCurrency) : shortNiceNumber(fiatVolume, 2, 3, selectedCurrency)
+    }
+    
+    return full ? niceNumber(totalVolume, 15, nativeCurrency) : shortNiceNumber(totalVolume, 2, 3, nativeCurrency)
+  }
+
+  // Helper function to format marketcap
+  const formatMarketcap = (marketcap, full = false) => {
+    if (!marketcap) return '-'
+    const marketcapValue = parseFloat(marketcap)
+    if (isNaN(marketcapValue)) return '-'
+    
+    if (fiatRate && fiatRate > 0) {
+      const fiatMarketcap = marketcapValue * fiatRate
+      return full ? niceNumber(fiatMarketcap, 15, selectedCurrency) : shortNiceNumber(fiatMarketcap, 2, 3, selectedCurrency)
+    }
+    
+    return full ? niceNumber(marketcapValue, 15, nativeCurrency) : shortNiceNumber(marketcapValue, 2, 3, nativeCurrency)
+  }
+
+  // Helper function to get total traders
+  const getTotalTraders = (uniqueBuyers, uniqueSellers) => {
+    const buyers = parseInt(uniqueBuyers) || 0
+    const sellers = parseInt(uniqueSellers) || 0
+    return buyers + sellers
+  }
+
   return (
     <>
       <SEO title="Tokens" />
@@ -245,7 +303,9 @@ export default function Tokens({
         orderList={[
           { value: 'rating', label: 'Rating: High to Low' },
           { value: 'trustlinesHigh', label: 'Trustlines: High to Low' },
-          { value: 'holdersHigh', label: 'Holders: High to Low' }
+          { value: 'holdersHigh', label: 'Holders: High to Low' },
+          // { value: 'marketcapHigh', label: 'Marketcap: High to Low' },
+          // { value: 'volumeHigh', label: 'Volume: High to Low' }
         ]}
         count={data?.length}
         hasMore={marker}
@@ -283,7 +343,12 @@ export default function Tokens({
                 <tr>
                   <th className="center">#</th>
                   <th>Token</th>
+                  <th className="right">Price</th>
+                  <th className="right">24h</th>
+                  <th className="right">7d</th> 
+                  <th className="right">Volume</th>
                   <th className="right">Marketcap</th>
+                  <th className="right">Traders</th>
                   <th className="right">Trustlines</th>
                   <th className="right">Holders</th>
                   <th className="center">Action</th>
@@ -305,7 +370,51 @@ export default function Tokens({
                           <TokenCell token={token} />
                         </td>
                         <td className="right">
-                          {shortNiceNumber(token.statistics?.marketcap, 0)} {nativeCurrency}
+                          {token.statistics?.priceXrp ? (
+                            <span className="tooltip">
+                              {formatPrice(token.statistics?.priceXrp)}
+                              <span className="tooltiptext no-brake">
+                                {formatPrice(token.statistics?.priceXrp, true)}
+                              </span>
+                            </span>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                        <td className="right">
+                          {/* 24h price change - would need historical data */}
+                          -
+                        </td>
+                        <td className="right">
+                          {/* 7d price change - would need historical data */}
+                          -
+                        </td>
+                        <td className="right">
+                          {token.statistics?.buyVolume && token.statistics?.sellVolume ? (
+                            <span className="tooltip">
+                              {formatVolume(token.statistics?.buyVolume, token.statistics?.sellVolume)}
+                              <span className="tooltiptext no-brake">
+                                {formatVolume(token.statistics?.buyVolume, token.statistics?.sellVolume, true)}
+                              </span>
+                            </span>
+                          ) : (
+                            '-'
+                          )}
+                        </td>                        
+                        <td className="right">
+                          {token.statistics?.marketcap ? (
+                            <span className="tooltip">
+                              {formatMarketcap(token.statistics?.marketcap)}
+                              <span className="tooltiptext no-brake">
+                                {formatMarketcap(token.statistics?.marketcap, true)}
+                              </span>
+                            </span>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                        <td className="right">
+                          {shortNiceNumber(getTotalTraders(token.statistics?.uniqueBuyers, token.statistics?.uniqueSellers), 0)}
                         </td>
                         <td className="right" suppressHydrationWarning>
                           {shortNiceNumber(token.trustlines, 0)}
@@ -365,15 +474,44 @@ export default function Tokens({
                         <td>
                           <TokenCell token={token} />
                           <p>
+                            {token.statistics?.priceXrp && (
+                              <>
+                                Price: <span className="tooltip">
+                                  {formatPrice(token.statistics?.priceXrp)} {fiatRate > 0 ? selectedCurrency.toUpperCase() : nativeCurrency}
+                                  <span className="tooltiptext no-brake">
+                                    {formatPrice(token.statistics?.priceXrp, true)} {fiatRate > 0 ? selectedCurrency.toUpperCase() : nativeCurrency}
+                                  </span>
+                                </span>
+                                <br />
+                              </>
+                            )}
+                            {token.statistics?.buyVolume && token.statistics?.sellVolume && (
+                              <>
+                                Volume: <span className="tooltip">
+                                  {formatVolume(token.statistics?.buyVolume, token.statistics?.sellVolume)}
+                                  <span className="tooltiptext no-brake">
+                                    {formatVolume(token.statistics?.buyVolume, token.statistics?.sellVolume, true)}
+                                  </span>
+                                </span>
+                                <br />
+                              </>
+                            )}
                             {token.statistics?.marketcap && (
                               <>
-                                Marketcap: {shortNiceNumber(token.statistics?.marketcap, 0)} {nativeCurrency}
+                                Marketcap: <span className="tooltip">
+                                  {formatMarketcap(token.statistics?.marketcap)}
+                                  <span className="tooltiptext no-brake">
+                                    {formatMarketcap(token.statistics?.marketcap, true)}
+                                  </span>
+                                </span>
                                 <br />
                               </>
                             )}
                             Trustlines: {shortNiceNumber(token.trustlines, 0)}
                             <br />
                             Holders: {shortNiceNumber(token.holders, 0)}
+                            <br />
+                            Unique Traders: {shortNiceNumber(getTotalTraders(token.statistics?.uniqueBuyers, token.statistics?.uniqueSellers), 0)}
                             <br />
                             <br />
                             <button
