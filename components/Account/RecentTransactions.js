@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { fullDateAndTime, timeOrDate } from '../../utils/format'
+import { fullDateAndTime, timeOrDate, amountFormat, addressUsernameOrServiceLink } from '../../utils/format'
 import { LinkTx } from '../../utils/links'
+// import { FiDownload, FiUpload } from 'react-icons/fi';
 import axios from 'axios'
-import CopyButton from '../UI/CopyButton'
 
 export default function RecentTransactions({ userData, ledgerTimestamp }) {
   const [transactions, setTransactions] = useState([])
@@ -22,7 +22,7 @@ export default function RecentTransactions({ userData, ledgerTimestamp }) {
     setLoading(true)
     setError(null)
     const res = await axios(
-      `/v3/transactions/${address}?limit=5` +
+      `/v3/transactions/${address}?limit=5&excludeFailures=1` +
         (ledgerTimestamp ? '&toDate=' + new Date(ledgerTimestamp).toISOString() : '')
     ).catch((error) => {
       setError(error.message)
@@ -41,6 +41,7 @@ export default function RecentTransactions({ userData, ledgerTimestamp }) {
   if (!transactions?.length) {
     return null
   }
+  console.log(transactions)
 
   return (
     <>
@@ -72,7 +73,7 @@ export default function RecentTransactions({ userData, ledgerTimestamp }) {
                 <th className="right">Validated</th>
                 <th className="right">Type</th>
                 <th className="right">Hash</th>
-                <th className="right">Status</th>
+                <th className="right">Balance changes</th>
               </tr>
               {transactions.map((txdata, i) => (
                 <tr key={txdata.tx?.hash || i}>
@@ -82,13 +83,21 @@ export default function RecentTransactions({ userData, ledgerTimestamp }) {
                   <td className="right">{txdata.tx?.date ? timeOrDate(txdata.tx.date, 'ripple') : '-'}</td>
                   <td className="right">{txdata.tx?.TransactionType}</td>
                   <td className="right">
-                    <LinkTx tx={txdata.tx?.hash} /> <CopyButton text={txdata.tx?.hash} />
+                    <LinkTx tx={txdata.tx?.hash} icon={true} />
                   </td>
                   <td className="right">
-                    <span className={txdata.outcome?.result === 'tesSUCCESS' ? 'green' : 'red'}>
-                      {txdata.outcome?.result === 'tesSUCCESS' ? 'Success' : 'Failed'}
-                    </span>
-                  </td>
+                    {txdata.outcome?.balanceChanges?.find((change) => change.address === address)?.balanceChanges?.map((change, index, array) => {
+                      return (
+                        <span key={index}>
+                          <span className={change.value > 0 ? 'green bold tooltip' : 'red bold tooltip'}>
+                            {amountFormat(change, { short: true, maxFractionDigits: 2 })}
+                            <span className="tooltiptext no-brake">{amountFormat(change)} {addressUsernameOrServiceLink(change, 'issuer')}</span>
+                          </span>
+                          {index < array.length - 1 && <span>, </span>}
+                        </span>
+                      )
+                    })}
+                  </td>                  
                 </tr>
               ))}
             </>
@@ -111,7 +120,7 @@ export default function RecentTransactions({ userData, ledgerTimestamp }) {
                 <th className="right">Validated</th>
                 <th className="right">Type</th>
                 <th className="center">Link</th>
-                <th className="left">Status</th>
+                <th className="center">Balance changes</th>
               </tr>
               {transactions.map((txdata, i) => (
                 <tr key={txdata.tx?.hash || i}>
@@ -123,10 +132,18 @@ export default function RecentTransactions({ userData, ledgerTimestamp }) {
                   <td className="center">
                     <LinkTx tx={txdata.tx?.hash} icon={true} />
                   </td>
-                  <td className="left">
-                    <span className={txdata.outcome?.result === 'tesSUCCESS' ? 'green' : 'red'}>
-                      {txdata.outcome?.result === 'tesSUCCESS' ? 'Success' : 'Failed'}
-                    </span>
+                  <td className="center">
+                    {txdata.outcome?.balanceChanges?.find((change) => change.address === address)?.balanceChanges?.map((change, index, array) => {
+                      return (
+                        <span key={index}>
+                          <span className={change.value > 0 ? 'green bold tooltip' : 'red bold tooltip'}>
+                            {amountFormat(change, { short: true, maxFractionDigits: 2 })}
+                            <span className="tooltiptext no-brake">{amountFormat(change)} {addressUsernameOrServiceLink(change, 'issuer')}</span>
+                          </span>
+                          {index < array.length - 1 && <span>, </span>}
+                        </span>
+                      )
+                    })}
                   </td>
                 </tr>
               ))}
